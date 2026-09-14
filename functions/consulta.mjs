@@ -15,41 +15,6 @@ function getCookieHeader(sessionId, nstk) {
   return `ASP.NET_SessionId=${sessionId}; nstk=${nstk}`;
 }
 
-function pdfDataUri(bytes) {
-  if (bytes.length >= 4 && Buffer.from(bytes.subarray(0, 4)).toString() === "%PDF") {
-    return `data:application/pdf;base64,${Buffer.from(bytes).toString("base64")}`;
-  }
-
-  return null;
-}
-
-function findPdfString(value) {
-  if (typeof value === "string") {
-    const encoded = value.startsWith("data:application/pdf;base64,")
-      ? value.split(",", 2)[1]
-      : value;
-    try {
-      const bytes = Buffer.from(encoded, "base64");
-      if (bytes.subarray(0, 4).toString() === "%PDF") {
-        return `data:application/pdf;base64,${bytes.toString("base64")}`;
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  if (value && typeof value === "object") {
-    for (const child of Object.values(value)) {
-      const pdf = findPdfString(child);
-      if (pdf) {
-        return pdf;
-      }
-    }
-  }
-
-  return null;
-}
-
 export default async function handler(request) {
   if (request.method !== "POST") {
     return jsonResponse(405, { ok: false, error: "Método no permitido." });
@@ -197,47 +162,6 @@ export default async function handler(request) {
     // La fecha es opcional; la consulta principal puede continuar.
   }
 
-  let pdf = null;
-  let pdfError = null;
-  try {
-    const responseInforme = await fetch(
-      `${BASE_URL}/Informes/DescargarInforme`,
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest",
-          Origin: BASE_URL,
-          Referer: `${BASE_URL}/InformeTerceros`,
-          Cookie: cookie,
-        },
-        body: new URLSearchParams({ documento: seleccionado.documento }),
-        signal: AbortSignal.timeout(60000),
-      },
-    );
-
-    if (responseInforme.ok) {
-      const bytes = Buffer.from(await responseInforme.arrayBuffer());
-      pdf = pdfDataUri(bytes);
-
-      if (!pdf) {
-        const mensaje = new TextDecoder().decode(bytes);
-        try {
-          const resultadoInforme = JSON.parse(mensaje);
-          pdf = findPdfString(resultadoInforme);
-          if (!pdf && resultadoInforme.Error) {
-            pdfError = String(resultadoInforme.Error);
-          }
-        } catch {
-          pdfError = "Nosis no devolvió un PDF válido.";
-        }
-      }
-    }
-  } catch {
-    pdfError = "No se pudo obtener el informe PDF.";
-  }
-
   return jsonResponse(200, {
     ok: true,
     resultados: resultados.map((persona) => ({
@@ -255,8 +179,5 @@ export default async function handler(request) {
     provincia: seleccionado.provincia,
     localidad: seleccionado.localidad,
     direccion: seleccionado.direcciones.join("\n") || "-",
-    pdf,
-    pdfError,
-    pdfNombre: `informe-${seleccionado.documento}.pdf`,
   });
 }
