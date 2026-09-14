@@ -72,8 +72,8 @@ export default async function handler(request) {
     return jsonResponse(400, { ok: false, error: "Ingresá un DNI o CUIT." });
   }
 
-  const sessionId = Netlify.env.get("ASP_NET_SESSION_ID");
-  const nstk = Netlify.env.get("NSTK");
+  const sessionId = process.env.ASP_NET_SESSION_ID;
+  const nstk = process.env.NSTK;
 
   if (!sessionId || !nstk) {
     return jsonResponse(500, {
