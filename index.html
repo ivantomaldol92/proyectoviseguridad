@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Consulta de persona</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f5f7;
+            color: #222;
+        }
+
+        .container {
+            width: min(700px, 92%);
+            margin: 60px auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 30px;
+            box-shadow: 0 5px 25px rgba(0,0,0,.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 25px;
+        }
+
+        .form {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 14px 22px;
+            background: #1266f1;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        .resultado {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .fila {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .label {
+            color: #777;
+            font-size: 13px;
+        }
+
+        .valor {
+            margin-top: 3px;
+            font-size: 17px;
+            white-space: pre-line;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #ffe5e5;
+            color: #a00000;
+            display: none;
+        }
+
+        .pdf {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 12px 18px;
+            background: #198754;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+            color: #666;
+        }
+
+        @media(max-width:600px) {
+            .form {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <h1>Consultar persona</h1>
+
+        <p>
+            Ingresá un DNI, CUIT o nombre para realizar la consulta.
+        </p>
+
+        <div class="form">
+
+            <input
+                type="text"
+                id="documento"
+                placeholder="DNI, CUIT o nombre"
+                autocomplete="off"
+            >
+
+            <button id="btnConsultar">
+                Consultar
+            </button>
+
+        </div>
+
+        <div id="loading" class="loading">
+            Consultando...
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <div id="resultado" class="resultado">
+            <div id="listaResultados"></div>
+
+            <a
+                id="pdf"
+                class="pdf"
+                href="#"
+                target="_blank"
+                style="display:none;"
+            >
+                Descargar informe PDF
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const input = document.getElementById('documento');
+const boton = document.getElementById('btnConsultar');
+
+const resultado = document.getElementById('resultado');
+const error = document.getElementById('error');
+const loading = document.getElementById('loading');
+
+const pdf = document.getElementById('pdf');
+const listaResultados = document.getElementById('listaResultados');
+const apiUrl = '/.netlify/functions/consulta';
+
+boton.addEventListener('click', consultar);
+
+input.addEventListener('keydown', function(e) {
+
+    if (e.key === 'Enter') {
+        consultar();
+    }
+
+});
+
+async function consultar() {
+
+    const entrada = input.value.trim();
+    const esNumerico = /^[\d\s-]+$/.test(entrada);
+    const consulta = esNumerico
+        ? entrada.replace(/[\s-]/g, '')
+        : entrada.replace(/\s+/g, ' ');
+
+    if (!entrada) {
+        mostrarError('Ingresá un DNI, CUIT o nombre.');
+        return;
+    }
+
+    if (esNumerico && !/^\d{7,11}$/.test(consulta)) {
+        mostrarError('Ingresá un DNI o CUIT válido.');
+        return;
+    }
+
+    if (!esNumerico && consulta.length < 3) {
+        mostrarError('Ingresá al menos 3 letras para buscar por nombre.');
+        return;
+    }
+
+    resultado.style.display = 'none';
+    error.style.display = 'none';
+
+    loading.style.display = 'block';
+    boton.disabled = true;
+
+    try {
+
+        const response = await fetch(apiUrl, {
+
+            method: 'POST',
+
+            headers: {
+                'Content-Type': 'application/json'
+            },
+
+            body: JSON.stringify({
+                documento: consulta
+            })
+
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.error || 'No fue posible realizar la consulta.'
+            );
+        }
+
+        mostrarResultado(data);
+
+    } catch (e) {
+
+        mostrarError(e.message);
+
+    } finally {
+
+        loading.style.display = 'none';
+        boton.disabled = false;
+
+    }
+}
+
+
+function mostrarResultado(data) {
+
+    const resultados = data.resultados || [data];
+    listaResultados.replaceChildren();
+
+    resultados.forEach((persona, indice) => {
+        const bloque = document.createElement('div');
+        bloque.className = 'fila';
+
+        const titulo = document.createElement('div');
+        titulo.className = 'label';
+        titulo.textContent = `Resultado ${indice + 1}`;
+
+        const datos = document.createElement('div');
+        datos.className = 'valor';
+        datos.textContent = [
+            `Nombre: ${persona.nombre || '-'}`,
+            `CUIT / Documento: ${persona.cuit || persona.documento || '-'}`,
+            `Provincia: ${persona.provincia || '-'}`,
+            `Localidad: ${persona.localidad || '-'}`,
+            `Dirección: ${persona.direccion || '-'}`,
+        ].join('\n');
+
+        bloque.append(titulo, datos);
+        listaResultados.appendChild(bloque);
+    });
+
+    if (data.pdf) {
+
+        pdf.href = data.pdf;
+        pdf.download = data.pdfNombre || 'informe.pdf';
+        pdf.style.display = 'inline-block';
+
+    } else {
+
+        pdf.removeAttribute('href');
+        pdf.removeAttribute('download');
+        pdf.style.display = 'none';
+
+    }
+
+    if (data.pdfError) {
+        mostrarError(`Informe PDF no disponible: ${data.pdfError}`);
+    }
+
+    resultado.style.display = 'block';
+}
+
+
+function mostrarError(mensaje) {
+
+    error.textContent = mensaje;
+    error.style.display = 'block';
+
+}
+
+</script>
+
+</body>
+</html>

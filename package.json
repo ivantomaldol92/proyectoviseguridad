@@ -1,0 +1,8 @@
+{
+  "name": "consulta-personas-netlify",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "cheerio": "^1.1.2"
+  }
+}
