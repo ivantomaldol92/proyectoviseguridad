@@ -152,3 +152,14 @@ También se detectó una consulta hacia un servicio de Credicuotas que puede dev
 ## Seguridad pendiente
 
 Las cookies que aparecen actualmente en `nosis.py` son credenciales de sesión y quedaron expuestas en el repositorio. Deben renovarse desde Nosis y retirarse del código fuente. Para producción, las credenciales deben mantenerse únicamente como variables de entorno de Netlify.
+
+## 19. Acceso autenticado
+
+Se agregó Netlify Identity para impedir que una persona use la herramienta solo por conocer el enlace.
+
+- La interfaz mantiene oculto el módulo de consulta hasta iniciar sesión.
+- El frontend envía el token de sesión en la cabecera `Authorization`.
+- `functions/consulta.mjs` valida el token antes de consultar Nosis.
+- La sesión puede cerrarse desde la pantalla.
+
+En Netlify se debe habilitar Identity y configurar el registro como **Invite only**. Luego se deben invitar únicamente usuarios autorizados. La autenticación visual del frontend no es suficiente por sí sola: la validación del backend es la que protege realmente la función.

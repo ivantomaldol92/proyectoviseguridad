@@ -15,7 +15,33 @@ function getCookieHeader(sessionId, nstk) {
   return `ASP.NET_SessionId=${sessionId}; nstk=${nstk}`;
 }
 
+async function usuarioAutenticado(request) {
+  const authorization = request.headers.get("authorization");
+  const siteUrl = process.env.URL;
+
+  if (!authorization?.startsWith("Bearer ") || !siteUrl) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${siteUrl}/.netlify/identity/user`, {
+      headers: { Authorization: authorization },
+      signal: AbortSignal.timeout(5000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(request) {
+  if (!(await usuarioAutenticado(request))) {
+    return jsonResponse(401, {
+      ok: false,
+      error: "Iniciá sesión para usar esta herramienta.",
+    });
+  }
+
   if (request.method !== "POST") {
     return jsonResponse(405, { ok: false, error: "Método no permitido." });
   }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Radar de exposición | Seguridad</title>
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
@@ -94,6 +95,14 @@
         .signal { padding: 15px 0; border-top: 1px solid var(--line); color: var(--ink); font-size: 13px; line-height: 1.5; }
         .signal strong { display: block; margin-bottom: 4px; color: var(--cyan); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
         .footer { margin-top: 46px; color: #55706d; font-size: 12px; line-height: 1.6; }
+        .auth-panel { max-width: 560px; margin: 0 auto 36px; padding: 28px; border: 1px solid var(--line); background: var(--panel); }
+        .auth-panel h2 { margin-bottom: 10px; }
+        .auth-panel p { color: var(--muted); line-height: 1.6; }
+        .auth-actions { display: flex; align-items: center; gap: 16px; margin-top: 22px; }
+        .auth-user { color: var(--cyan); font-size: 13px; }
+        .logout { padding: 9px 13px; background: transparent; border: 1px solid var(--line); color: var(--cyan); font-size: 12px; }
+        .logout:hover { background: rgba(109, 235, 208, .1); transform: none; }
+        .protected-content { display: none; }
 
         @media(max-width:760px) {
             .topbar { margin-bottom: 54px; }
@@ -125,7 +134,18 @@
         <p class="intro">Una herramienta para visualizar la huella de información personal que puede aparecer en fuentes abiertas. Conocer el riesgo es el primer paso para reducirlo.</p>
     </section>
 
-    <main class="workspace">
+    <section id="authPanel" class="auth-panel">
+        <div class="code-label">Control de acceso // identidad verificada</div>
+        <h2>Acceso restringido</h2>
+        <p>Iniciá sesión para usar el módulo de consulta. El enlace por sí solo no habilita el acceso.</p>
+        <div class="auth-actions">
+            <button id="loginButton" type="button">Iniciar sesión</button>
+            <span id="authStatus" class="auth-user">Sesión no iniciada</span>
+            <button id="logoutButton" class="logout" type="button" style="display:none;">Cerrar sesión</button>
+        </div>
+    </section>
+
+    <main id="protectedContent" class="workspace protected-content">
         <section class="card">
             <div class="card-heading">
                 <div>
@@ -186,6 +206,31 @@ const loading = document.getElementById('loading');
 const listaResultados = document.getElementById('listaResultados');
 const apiUrl = '/.netlify/functions/consulta';
 let consultaActualEsNumerica = false;
+const authPanel = document.getElementById('authPanel');
+const protectedContent = document.getElementById('protectedContent');
+const loginButton = document.getElementById('loginButton');
+const logoutButton = document.getElementById('logoutButton');
+const authStatus = document.getElementById('authStatus');
+
+loginButton.addEventListener('click', () => netlifyIdentity.open('login'));
+logoutButton.addEventListener('click', () => netlifyIdentity.logout());
+
+function actualizarAcceso(usuario) {
+    const autenticado = Boolean(usuario);
+    protectedContent.style.display = autenticado ? 'grid' : 'none';
+    loginButton.style.display = autenticado ? 'none' : 'inline-block';
+    logoutButton.style.display = autenticado ? 'inline-block' : 'none';
+    authStatus.textContent = autenticado
+        ? `Sesión verificada: ${usuario.email}`
+        : 'Sesión no iniciada';
+}
+
+netlifyIdentity.on('init', actualizarAcceso);
+netlifyIdentity.on('login', (usuario) => {
+    actualizarAcceso(usuario);
+    netlifyIdentity.close();
+});
+netlifyIdentity.on('logout', () => actualizarAcceso(null));
 
 boton.addEventListener('click', consultar);
 
@@ -230,12 +275,19 @@ async function consultar() {
 
     try {
 
+        const usuario = netlifyIdentity.currentUser();
+        if (!usuario) {
+            throw new Error('Iniciá sesión para realizar una consulta.');
+        }
+
+        const token = await usuario.jwt();
         const response = await fetch(apiUrl, {
 
             method: 'POST',
 
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
             },
 
             body: JSON.stringify({
