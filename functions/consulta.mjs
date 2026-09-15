@@ -157,13 +157,20 @@ export default async function handler(request) {
   let fechaNacimiento = "-";
   try {
     const responseFecha = await fetch(
-      `https://clientes.credicuotas.com.ar/v1/onboarding/resolvecustomers/${seleccionado.documento}`,
-      { signal: AbortSignal.timeout(30000) },
+      `https://clientes.credicuotas.com.ar/v1/onboarding/resolvecustomers/${encodeURIComponent(seleccionado.documento)}`,
+      {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(30000),
+      },
     );
     if (responseFecha.ok) {
       const datosFecha = await responseFecha.json();
       if (Array.isArray(datosFecha) && datosFecha.length > 0) {
-        fechaNacimiento = datosFecha[0].fechanacimiento || "-";
+        const registro = datosFecha[0] || {};
+        fechaNacimiento = registro.fechanacimiento
+          || registro.fechaNacimiento
+          || registro.fecha_nacimiento
+          || "-";
       }
     }
   } catch {

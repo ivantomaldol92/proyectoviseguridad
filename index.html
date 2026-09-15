@@ -87,6 +87,23 @@
         .error { display: none; margin-top: 20px; padding: 13px 15px; border-left: 3px solid var(--danger); background: rgba(255, 139, 120, .1); color: #ffc0b5; }
         .pdf-local { margin-top: 14px; padding: 10px 14px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); font-size: 13px; }
         .pdf-local:hover { background: rgba(109, 235, 208, .1); transform: none; }
+        .ficha-modal { display: none; position: fixed; inset: 0; z-index: 5; padding: 20px; background: rgba(3, 10, 12, .88); overflow-y: auto; }
+        .ficha-modal.abierta { display: grid; place-items: center; }
+        .ficha { width: min(620px, 100%); padding: 28px; border: 1px solid var(--cyan); background: #edf5f0; color: #132629; }
+        .ficha h2 { margin: 0 0 22px; color: #132629; }
+        .ficha p { margin: 9px 0; line-height: 1.5; }
+        .ficha strong { display: inline-block; width: 165px; color: #58706d; }
+        .ficha small { display: block; margin-top: 26px; color: #718582; }
+        .ficha-actions { display: flex; gap: 10px; margin-top: 24px; }
+        .ficha-actions .secundario { background: #d9e7df; color: #132629; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            .ficha-modal, .ficha-modal * { visibility: visible !important; }
+            .ficha-modal { position: absolute; inset: 0; display: block; padding: 0; background: white; }
+            .ficha { width: 100%; border: 0; }
+            .ficha-actions { display: none !important; }
+        }
 
         .info-panel { padding: 24px; }
         .info-panel h3 { margin: 0 0 18px; font-family: 'Syne', sans-serif; font-size: 20px; }
@@ -193,6 +210,18 @@
 
     <footer class="footer">Proyecto educativo de concientización en seguridad y privacidad. No compartas resultados personales ni los uses para hostigar, discriminar o tomar decisiones sobre terceros.</footer>
 
+    <section id="fichaModal" class="ficha-modal" aria-hidden="true">
+        <article class="ficha">
+            <h2>Ficha de exposición de datos</h2>
+            <div id="fichaDatos"></div>
+            <small>Generado únicamente con los datos visibles en esta pantalla. Uso autorizado y responsable.</small>
+            <div class="ficha-actions">
+                <button id="imprimirFicha" type="button">Imprimir / Guardar PDF</button>
+                <button id="cerrarFicha" class="secundario" type="button">Cerrar</button>
+            </div>
+        </article>
+    </section>
+
 </div>
 
 <script>
@@ -214,9 +243,16 @@ const logoutButton = document.getElementById('logoutButton');
 const authStatus = document.getElementById('authStatus');
 const passwordInput = document.getElementById('passwordInput');
 const loginApiUrl = '/.netlify/functions/login';
+const fichaModal = document.getElementById('fichaModal');
+const fichaDatos = document.getElementById('fichaDatos');
+const imprimirFicha = document.getElementById('imprimirFicha');
+const cerrarFicha = document.getElementById('cerrarFicha');
+let fichaActual = null;
 
 loginButton.addEventListener('click', iniciarSesion);
 logoutButton.addEventListener('click', cerrarSesion);
+imprimirFicha.addEventListener('click', () => window.print());
+cerrarFicha.addEventListener('click', cerrarFichaModal);
 passwordInput.addEventListener('keydown', (evento) => {
     if (evento.key === 'Enter') iniciarSesion();
 });
@@ -392,18 +428,31 @@ function mostrarResultado(data) {
 }
 
 function abrirFichaParaImprimir(persona) {
-    const ventana = window.open('', '_blank', 'width=760,height=800');
-    if (!ventana) {
-        mostrarError('Permití las ventanas emergentes para abrir la ficha.');
-        return;
-    }
+    fichaActual = persona;
+    fichaDatos.replaceChildren();
+    const campos = [
+        ['Nombre', persona.nombre],
+        ['Documento', persona.cuit || persona.documento],
+        ['Fecha de nacimiento', persona.fechaNacimiento],
+        ['Provincia', persona.provincia],
+        ['Localidad', persona.localidad],
+        ['Dirección', persona.direccion]
+    ];
+    campos.forEach(([etiqueta, valor]) => {
+        const parrafo = document.createElement('p');
+        const fuerte = document.createElement('strong');
+        fuerte.textContent = `${etiqueta}:`;
+        parrafo.append(fuerte, document.createTextNode(valor || '-'));
+        fichaDatos.appendChild(parrafo);
+    });
+    fichaModal.classList.add('abierta');
+    fichaModal.setAttribute('aria-hidden', 'false');
+}
 
-    const escapar = (valor) => String(valor || '-').replace(/[&<>"']/g, (caracter) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-    }[caracter]));
-
-    ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ficha de exposición</title><style>body{font-family:Arial,sans-serif;color:#132629;margin:48px;line-height:1.5}h1{font-size:24px;border-bottom:3px solid #6debd0;padding-bottom:12px}p{margin:8px 0}strong{display:inline-block;width:150px;color:#58706d}small{display:block;margin-top:34px;color:#718582}</style></head><body><h1>Ficha de exposición de datos</h1><p><strong>Nombre:</strong> ${escapar(persona.nombre)}</p><p><strong>Documento:</strong> ${escapar(persona.cuit || persona.documento)}</p><p><strong>Provincia:</strong> ${escapar(persona.provincia)}</p><p><strong>Localidad:</strong> ${escapar(persona.localidad)}</p><p><strong>Dirección:</strong> ${escapar(persona.direccion)}</p><small>Generado únicamente con los datos visibles en esta pantalla. Uso autorizado y responsable.</small><script>window.onload=()=>window.print();<\/script></body></html>`);
-    ventana.document.close();
+function cerrarFichaModal() {
+    fichaActual = null;
+    fichaModal.classList.remove('abierta');
+    fichaModal.setAttribute('aria-hidden', 'true');
 }
 
 
