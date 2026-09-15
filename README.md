@@ -155,11 +155,22 @@ Las cookies que aparecen actualmente en `nosis.py` son credenciales de sesión y
 
 ## 19. Acceso autenticado
 
-Se agregó Netlify Identity para impedir que una persona use la herramienta solo por conocer el enlace.
+Se implementó un login propio para impedir que una persona use la herramienta solo por conocer el enlace.
 
 - La interfaz mantiene oculto el módulo de consulta hasta iniciar sesión.
-- El frontend envía el token de sesión en la cabecera `Authorization`.
-- `functions/consulta.mjs` valida el token antes de consultar Nosis.
+- `functions/login.mjs` verifica la contraseña en el backend.
+- El backend crea una cookie `HttpOnly`, `Secure` y `SameSite=Strict`.
+- La cookie está firmada con HMAC y vence después de 8 horas.
+- `functions/consulta.mjs` valida la cookie antes de consultar Nosis.
 - La sesión puede cerrarse desde la pantalla.
 
-En Netlify se debe habilitar Identity y configurar el registro como **Invite only**. Luego se deben invitar únicamente usuarios autorizados. La autenticación visual del frontend no es suficiente por sí sola: la validación del backend es la que protege realmente la función.
+En Netlify se deben crear estas variables secretas:
+
+```text
+APP_PASSWORD=una contraseña larga y privada
+AUTH_SECRET=una cadena aleatoria larga y privada
+```
+
+`AUTH_SECRET` no debe ser igual a `APP_PASSWORD`. Ninguna de las dos debe publicarse en GitHub ni escribirse en `index.html`.
+
+Este acceso es adecuado para una demo privada con una contraseña compartida. No identifica usuarios individualmente ni reemplaza MFA; si el proyecto crece, conviene migrar a Supabase Auth o Auth0.

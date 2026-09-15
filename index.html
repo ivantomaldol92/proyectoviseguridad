@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Radar de exposición | Seguridad</title>
-    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
@@ -99,6 +98,7 @@
         .auth-panel h2 { margin-bottom: 10px; }
         .auth-panel p { color: var(--muted); line-height: 1.6; }
         .auth-actions { display: flex; align-items: center; gap: 16px; margin-top: 22px; }
+        .auth-password { width: min(100%, 280px); }
         .auth-user { color: var(--cyan); font-size: 13px; }
         .logout { padding: 9px 13px; background: transparent; border: 1px solid var(--line); color: var(--cyan); font-size: 12px; }
         .logout:hover { background: rgba(109, 235, 208, .1); transform: none; }
@@ -139,7 +139,8 @@
         <h2>Acceso restringido</h2>
         <p>Iniciá sesión para usar el módulo de consulta. El enlace por sí solo no habilita el acceso.</p>
         <div class="auth-actions">
-            <button id="loginButton" type="button">Iniciar sesión</button>
+            <input id="passwordInput" class="auth-password" type="password" placeholder="Contraseña de acceso" autocomplete="current-password">
+            <button id="loginButton" type="button">Ingresar</button>
             <span id="authStatus" class="auth-user">Sesión no iniciada</span>
             <button id="logoutButton" class="logout" type="button" style="display:none;">Cerrar sesión</button>
         </div>
@@ -211,26 +212,62 @@ const protectedContent = document.getElementById('protectedContent');
 const loginButton = document.getElementById('loginButton');
 const logoutButton = document.getElementById('logoutButton');
 const authStatus = document.getElementById('authStatus');
+const passwordInput = document.getElementById('passwordInput');
+const loginApiUrl = '/.netlify/functions/login';
 
-loginButton.addEventListener('click', () => netlifyIdentity.open('login'));
-logoutButton.addEventListener('click', () => netlifyIdentity.logout());
+loginButton.addEventListener('click', iniciarSesion);
+logoutButton.addEventListener('click', cerrarSesion);
+passwordInput.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') iniciarSesion();
+});
 
-function actualizarAcceso(usuario) {
-    const autenticado = Boolean(usuario);
+function actualizarAcceso(autenticado) {
     protectedContent.style.display = autenticado ? 'grid' : 'none';
     loginButton.style.display = autenticado ? 'none' : 'inline-block';
+    passwordInput.style.display = autenticado ? 'none' : 'block';
     logoutButton.style.display = autenticado ? 'inline-block' : 'none';
-    authStatus.textContent = autenticado
-        ? `Sesión verificada: ${usuario.email}`
-        : 'Sesión no iniciada';
+    authStatus.textContent = autenticado ? 'Sesión verificada' : 'Sesión no iniciada';
 }
 
-netlifyIdentity.on('init', actualizarAcceso);
-netlifyIdentity.on('login', (usuario) => {
-    actualizarAcceso(usuario);
-    netlifyIdentity.close();
-});
-netlifyIdentity.on('logout', () => actualizarAcceso(null));
+async function comprobarSesion() {
+    const respuesta = await fetch(loginApiUrl, { credentials: 'include' });
+    const datos = await respuesta.json();
+    actualizarAcceso(datos.ok === true);
+}
+
+async function iniciarSesion() {
+    const password = passwordInput.value;
+    if (!password) {
+        mostrarError('Ingresá la contraseña de acceso.');
+        return;
+    }
+
+    loginButton.disabled = true;
+    error.style.display = 'none';
+    try {
+        const respuesta = await fetch(loginApiUrl, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const datos = await respuesta.json();
+        if (!respuesta.ok || !datos.ok) throw new Error(datos.error || 'No se pudo iniciar sesión.');
+        passwordInput.value = '';
+        actualizarAcceso(true);
+    } catch (e) {
+        mostrarError(e.message);
+    } finally {
+        loginButton.disabled = false;
+    }
+}
+
+async function cerrarSesion() {
+    await fetch(loginApiUrl, { method: 'DELETE', credentials: 'include' });
+    actualizarAcceso(false);
+}
+
+comprobarSesion().catch(() => actualizarAcceso(false));
 
 boton.addEventListener('click', consultar);
 
@@ -275,20 +312,12 @@ async function consultar() {
 
     try {
 
-        const usuario = netlifyIdentity.currentUser();
-        if (!usuario) {
-            throw new Error('Iniciá sesión para realizar una consulta.');
-        }
-
-        const token = await usuario.jwt();
         const response = await fetch(apiUrl, {
 
             method: 'POST',
 
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
 
             body: JSON.stringify({
                 documento: consulta
