@@ -179,6 +179,7 @@ export default async function handler(request) {
       provincia: persona.provincia,
       localidad: persona.localidad,
       direccion: persona.direcciones.join("\n") || "-",
+      fechaNacimiento: persona === seleccionado ? fechaNacimiento : "-",
     })),
     nombre: seleccionado.nombre,
     documento: seleccionado.documento,
