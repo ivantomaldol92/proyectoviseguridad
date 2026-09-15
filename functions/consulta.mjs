@@ -165,11 +165,18 @@ export default async function handler(request) {
     );
     if (responseFecha.ok) {
       const datosFecha = await responseFecha.json();
-      if (Array.isArray(datosFecha) && datosFecha.length > 0) {
-        const registro = datosFecha[0] || {};
-        fechaNacimiento = registro.fechanacimiento
-          || registro.fechaNacimiento
-          || registro.fecha_nacimiento
+      const registro = Array.isArray(datosFecha)
+        ? (datosFecha[0] || {})
+        : (datosFecha || {});
+      fechaNacimiento = registro.fechanacimiento
+        || registro.fechaNacimiento
+        || registro.fecha_nacimiento
+        || registro.fechaNac
+        || registro.birthDate
+        || "-";
+      if (fechaNacimiento === "-" && registro.customer) {
+        fechaNacimiento = registro.customer.fechanacimiento
+          || registro.customer.fechaNacimiento
           || "-";
       }
     }

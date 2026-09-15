@@ -17,6 +17,7 @@
             --cyan: #6debd0;
             --acid: #d7f36b;
             --danger: #ff8b78;
+            --violet: #a995ff;
         }
 
         * { box-sizing: border-box; }
@@ -43,27 +44,36 @@
             mask-image: linear-gradient(to bottom, black, transparent 85%);
         }
 
-        .container { width: min(1080px, 92%); margin: 0 auto; padding: 42px 0 54px; }
+        .container { width: min(1160px, 92%); margin: 0 auto; padding: 30px 0 60px; }
 
-        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 72px; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 76px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 
         .brand { display: flex; align-items: center; gap: 12px; color: var(--ink); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; }
 
         .brand-mark { width: 28px; height: 28px; border: 1px solid var(--cyan); position: relative; transform: rotate(45deg); }
         .brand-mark::after { content: ''; position: absolute; inset: 6px; background: var(--acid); }
 
-        .status { color: var(--cyan); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+        .status { color: var(--cyan); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
         .status::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 14px var(--acid); }
 
-        .hero { max-width: 760px; margin-bottom: 34px; }
+        .hero { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 56px; align-items: end; margin-bottom: 28px; }
         .eyebrow { color: var(--acid); font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 
-        h1 { max-width: 700px; margin: 12px 0 18px; font-family: 'Syne', sans-serif; font-size: clamp(42px, 7vw, 82px); line-height: .98; letter-spacing: -.04em; }
-        .intro { max-width: 650px; color: var(--muted); font-size: 18px; line-height: 1.6; }
+        h1 { max-width: 760px; margin: 12px 0 18px; font-family: 'Syne', sans-serif; font-size: clamp(42px, 7vw, 82px); line-height: .98; letter-spacing: -.04em; }
+        .intro { max-width: 680px; color: var(--muted); font-size: 18px; line-height: 1.6; }
+        .hero-console { padding: 20px; border: 1px solid rgba(169, 149, 255, .35); background: linear-gradient(145deg, rgba(33, 28, 65, .72), rgba(8, 26, 29, .74)); }
+        .console-top { display: flex; justify-content: space-between; color: var(--violet); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+        .console-line { margin: 24px 0 18px; color: var(--ink); font-family: monospace; font-size: 12px; line-height: 1.7; }
+        .console-line span { color: var(--acid); }
+        .console-meter { height: 4px; background: rgba(255, 255, 255, .1); }
+        .console-meter::after { content: ''; display: block; width: 68%; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--acid)); }
+        .risk-strip { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 36px; }
+        .risk-tag { padding: 7px 10px; border: 1px solid var(--line); color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+        .risk-tag.active { border-color: rgba(215, 243, 107, .45); color: var(--acid); }
 
         .workspace { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(250px, .6fr); gap: 18px; align-items: start; }
 
-        .card, .info-panel { border: 1px solid var(--line); background: var(--panel); box-shadow: 0 22px 70px rgba(0, 0, 0, .24); }
+        .card, .info-panel { border: 1px solid var(--line); background: linear-gradient(145deg, rgba(12, 28, 31, .94), rgba(8, 19, 23, .88)); box-shadow: 0 22px 70px rgba(0, 0, 0, .24); }
         .card { padding: clamp(24px, 5vw, 46px); }
         .card-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
         h2 { margin: 0; font-family: 'Syne', sans-serif; font-size: 24px; }
@@ -84,6 +94,9 @@
         .fila { padding: 16px 0; border-bottom: 1px solid rgba(119, 225, 199, .12); }
         .label { color: var(--acid); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
         .valor { margin-top: 8px; color: var(--ink); font-size: 16px; line-height: 1.7; white-space: pre-line; }
+        .documento-linea { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--ink); font-size: 16px; }
+        .copy-dni { padding: 6px 10px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); font-size: 12px; }
+        .copy-dni:hover { background: rgba(109, 235, 208, .1); transform: none; }
         .error { display: none; margin-top: 20px; padding: 13px 15px; border-left: 3px solid var(--danger); background: rgba(255, 139, 120, .1); color: #ffc0b5; }
         .pdf-local { margin-top: 14px; padding: 10px 14px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); font-size: 13px; }
         .pdf-local:hover { background: rgba(109, 235, 208, .1); transform: none; }
@@ -98,14 +111,19 @@
         .ficha-actions .secundario { background: #d9e7df; color: #132629; }
 
         @media print {
+            @page { size: A4; margin: 12mm; }
             body * { visibility: hidden !important; }
             .ficha-modal, .ficha-modal * { visibility: visible !important; }
             .ficha-modal { position: absolute; inset: 0; display: block; padding: 0; background: white; }
-            .ficha { width: 100%; border: 0; }
+            .ficha { width: 100%; min-height: 0; padding: 0; border: 0; font-size: 12pt; }
+            .ficha h2 { margin-bottom: 14px; font-size: 18pt; }
+            .ficha p { margin: 6px 0; line-height: 1.25; }
+            .ficha small { margin-top: 18px; font-size: 9pt; }
             .ficha-actions { display: none !important; }
         }
 
         .info-panel { padding: 24px; }
+        .info-kicker { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 22px; color: var(--violet); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
         .info-panel h3 { margin: 0 0 18px; font-family: 'Syne', sans-serif; font-size: 20px; }
         .info-panel p { color: var(--muted); font-size: 14px; line-height: 1.6; }
         .signal { padding: 15px 0; border-top: 1px solid var(--line); color: var(--ink); font-size: 13px; line-height: 1.5; }
@@ -124,6 +142,7 @@
         @media(max-width:760px) {
             .topbar { margin-bottom: 54px; }
             .status { display: none; }
+            .hero { grid-template-columns: 1fr; gap: 24px; }
             .workspace { grid-template-columns: 1fr; }
         }
 
@@ -142,14 +161,28 @@
 
     <header class="topbar">
         <div class="brand"><span class="brand-mark"></span> Radar de exposición</div>
-        <div class="status">Sistema operativo</div>
+        <div class="status">Ethical security lab / online</div>
     </header>
 
     <section class="hero">
-        <div class="eyebrow">Proyecto de seguridad // observatorio ciudadano</div>
-        <h1>¿Qué datos tuyos están expuestos?</h1>
-        <p class="intro">Una herramienta para visualizar la huella de información personal que puede aparecer en fuentes abiertas. Conocer el riesgo es el primer paso para reducirlo.</p>
+        <div>
+            <div class="eyebrow">Ethical hacking // observatorio ciudadano</div>
+            <h1>La exposición empieza donde termina el control.</h1>
+            <p class="intro">Una demostración educativa para mostrar cómo una sesión débil, un endpoint expuesto o demasiados datos conectados pueden revelar una identidad con sorprendente facilidad.</p>
+        </div>
+        <div class="hero-console" aria-label="Estado del laboratorio de seguridad">
+            <div class="console-top"><span>Exposure scan</span><span>SEC-017</span></div>
+            <div class="console-line"><span>&gt;</span> mapear_huella()<br><span>&gt;</span> revisar_controles()<br><span>&gt;</span> informar_riesgo()<br><span>&gt;</span> <b>esperando autorización</b></div>
+            <div class="console-meter"></div>
+        </div>
     </section>
+
+    <div class="risk-strip">
+        <span class="risk-tag active">Hacking ético</span>
+        <span class="risk-tag">Solo con autorización</span>
+        <span class="risk-tag">Datos personales</span>
+        <span class="risk-tag">Divulgación responsable</span>
+    </div>
 
     <section id="authPanel" class="auth-panel">
         <div class="code-label">Control de acceso // identidad verificada</div>
@@ -200,11 +233,12 @@
         </section>
 
         <aside class="info-panel">
+            <div class="info-kicker"><span>Threat model</span><span>Read first</span></div>
             <h3>Por qué importa</h3>
-            <p>Un dato aislado parece inofensivo. Varios datos conectados pueden revelar hábitos, ubicación y vínculos.</p>
+            <p>El objetivo no es enseñar a abusar de un sistema: es hacer visible lo que un atacante podría encontrar cuando las defensas fallan.</p>
             <div class="signal"><strong>01 / Visibilidad</strong>Detectá qué información puede ser encontrada con pocos datos.</div>
-            <div class="signal"><strong>02 / Contexto</strong>Interpretá los resultados con criterio, no como una verdad absoluta.</div>
-            <div class="signal"><strong>03 / Responsabilidad</strong>Usá esta herramienta solo sobre vos o con autorización.</div>
+            <div class="signal"><strong>02 / Vulnerabilidad</strong>Una cookie reutilizable o un endpoint sin controles puede amplificar el impacto.</div>
+            <div class="signal"><strong>03 / Responsabilidad</strong>Usá esta demo solo sobre vos o con autorización explícita.</div>
         </aside>
     </main>
 
@@ -401,7 +435,6 @@ function mostrarResultado(data) {
         datos.className = 'valor';
         datos.textContent = [
             `Nombre: ${persona.nombre || '-'}`,
-            `CUIT / Documento: ${persona.cuit || persona.documento || '-'}`,
             `Fecha de nacimiento: ${persona.fechaNacimiento || '-'}`,
             `Provincia: ${persona.provincia || '-'}`,
             `Localidad: ${persona.localidad || '-'}`,
@@ -409,6 +442,25 @@ function mostrarResultado(data) {
         ].join('\n');
 
         bloque.append(titulo, datos);
+
+        const documento = persona.cuit || persona.documento || '-';
+        const documentoLinea = document.createElement('div');
+        documentoLinea.className = 'documento-linea';
+        documentoLinea.textContent = `CUIT / Documento: ${documento}`;
+
+        if (!consultaActualEsNumerica) {
+            const dni = obtenerDni(documento);
+            if (dni) {
+                const botonCopiar = document.createElement('button');
+                botonCopiar.className = 'copy-dni';
+                botonCopiar.type = 'button';
+                botonCopiar.textContent = 'Copiar DNI';
+                botonCopiar.addEventListener('click', () => copiarDni(dni, botonCopiar));
+                documentoLinea.appendChild(botonCopiar);
+            }
+        }
+
+        bloque.appendChild(documentoLinea);
 
         if (consultaActualEsNumerica) {
             const botonPdf = document.createElement('button');
@@ -425,6 +477,21 @@ function mostrarResultado(data) {
     });
 
     resultado.style.display = 'block';
+}
+
+function obtenerDni(documento) {
+    const numeros = String(documento).replace(/\D/g, '');
+    return /^\d{11}$/.test(numeros) ? numeros.slice(2, -1) : '';
+}
+
+async function copiarDni(dni, botonCopiar) {
+    try {
+        await navigator.clipboard.writeText(dni);
+        botonCopiar.textContent = 'DNI copiado';
+        setTimeout(() => { botonCopiar.textContent = 'Copiar DNI'; }, 1600);
+    } catch {
+        mostrarError(`No se pudo copiar automáticamente. DNI: ${dni}`);
+    }
 }
 
 function abrirFichaParaImprimir(persona) {
