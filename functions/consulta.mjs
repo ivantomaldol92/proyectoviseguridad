@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { sesionValida } from "./login.mjs";
+import { ipBloqueada, ocultarConsulta, registrarEvento } from "./security.mjs";
 
 const BASE_URL = "https://mi.nosis.com";
 
@@ -17,7 +18,13 @@ function getCookieHeader(sessionId, nstk) {
 }
 
 export default async function handler(request) {
+  if (await ipBloqueada(request.headers.get("x-nf-client-connection-ip") || "unknown")) {
+    await registrarEvento(request, { type: "blocked_request", outcome: "denied" });
+    return jsonResponse(403, { ok: false, error: "Acceso bloqueado." });
+  }
+
   if (!sesionValida(request)) {
+    await registrarEvento(request, { type: "unauthorized_query", outcome: "denied" });
     return jsonResponse(401, {
       ok: false,
       error: "Iniciá sesión para usar esta herramienta.",
@@ -42,6 +49,7 @@ export default async function handler(request) {
     : entrada.replace(/\s+/g, " ");
 
   if (!documento) {
+    await registrarEvento(request, { type: "invalid_query", outcome: "denied" });
     return jsonResponse(400, { ok: false, error: "Ingresá un DNI o CUIT." });
   }
 
@@ -54,6 +62,13 @@ export default async function handler(request) {
       error: "Faltan las variables de entorno de la sesión.",
     });
   }
+
+  await registrarEvento(request, {
+    type: "query",
+    outcome: "started",
+    query: ocultarConsulta(documento),
+    queryKind: esNumerico ? "documento" : "nombre",
+  });
 
   const cookie = getCookieHeader(sessionId, nstk);
   const headersBusqueda = {

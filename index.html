@@ -138,6 +138,16 @@
         .logout { padding: 9px 13px; background: transparent; border: 1px solid var(--line); color: var(--cyan); font-size: 12px; }
         .logout:hover { background: rgba(109, 235, 208, .1); transform: none; }
         .protected-content { display: none; }
+        .admin-panel { margin-top: 20px; padding: 24px; border: 1px solid rgba(169, 149, 255, .35); background: rgba(25, 20, 48, .72); }
+        .admin-panel h3 { margin: 0 0 8px; color: var(--violet); font-family: 'Syne', sans-serif; }
+        .admin-copy { color: var(--muted); font-size: 13px; line-height: 1.5; }
+        .admin-form { display: flex; gap: 10px; margin-top: 16px; }
+        .admin-form input { flex: 1; }
+        .admin-logs { display: none; margin-top: 20px; overflow-x: auto; }
+        .admin-logs table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+        .admin-logs th, .admin-logs td { padding: 9px; border-bottom: 1px solid rgba(169, 149, 255, .18); text-align: left; }
+        .admin-logs th { color: var(--violet); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+        .block-ip { padding: 6px 9px; background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 11px; }
 
         @media(max-width:760px) {
             .topbar { margin-bottom: 54px; }
@@ -194,6 +204,17 @@
             <span id="authStatus" class="auth-user">Sesión no iniciada</span>
             <button id="logoutButton" class="logout" type="button" style="display:none;">Cerrar sesión</button>
         </div>
+    </section>
+
+    <section class="admin-panel">
+        <h3>Security console</h3>
+        <div class="admin-copy">Panel privado de auditoría. Requiere una credencial administrativa distinta a la contraseña de acceso.</div>
+        <div class="admin-form">
+            <input id="adminPassword" type="password" placeholder="Contraseña administrativa" autocomplete="off">
+            <button id="adminLogin" type="button">Ver logs</button>
+        </div>
+        <div id="adminError" class="error"></div>
+        <div id="adminLogs" class="admin-logs"></div>
     </section>
 
     <main id="protectedContent" class="workspace protected-content">
@@ -277,6 +298,11 @@ const logoutButton = document.getElementById('logoutButton');
 const authStatus = document.getElementById('authStatus');
 const passwordInput = document.getElementById('passwordInput');
 const loginApiUrl = '/.netlify/functions/login';
+const adminApiUrl = '/.netlify/functions/admin';
+const adminPassword = document.getElementById('adminPassword');
+const adminLogin = document.getElementById('adminLogin');
+const adminError = document.getElementById('adminError');
+const adminLogs = document.getElementById('adminLogs');
 const fichaModal = document.getElementById('fichaModal');
 const fichaDatos = document.getElementById('fichaDatos');
 const imprimirFicha = document.getElementById('imprimirFicha');
@@ -285,6 +311,7 @@ let fichaActual = null;
 
 loginButton.addEventListener('click', iniciarSesion);
 logoutButton.addEventListener('click', cerrarSesion);
+adminLogin.addEventListener('click', accederLogs);
 imprimirFicha.addEventListener('click', () => window.print());
 cerrarFicha.addEventListener('click', cerrarFichaModal);
 passwordInput.addEventListener('keydown', (evento) => {
@@ -335,6 +362,72 @@ async function iniciarSesion() {
 async function cerrarSesion() {
     await fetch(loginApiUrl, { method: 'DELETE', credentials: 'include' });
     actualizarAcceso(false);
+}
+
+async function accederLogs() {
+    adminLogin.disabled = true;
+    adminError.style.display = 'none';
+    try {
+        const login = await fetch(adminApiUrl, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', password: adminPassword.value })
+        });
+        const loginData = await login.json();
+        if (!login.ok || !loginData.ok) throw new Error(loginData.error || 'Acceso rechazado.');
+        const respuesta = await fetch(adminApiUrl, { credentials: 'include' });
+        const datos = await respuesta.json();
+        if (!respuesta.ok || !datos.ok) throw new Error(datos.error || 'No se pudieron cargar los logs.');
+        renderizarLogs(datos.events || []);
+        adminPassword.value = '';
+    } catch (e) {
+        adminError.textContent = e.message;
+        adminError.style.display = 'block';
+    } finally {
+        adminLogin.disabled = false;
+    }
+}
+
+function renderizarLogs(eventos) {
+    adminLogs.replaceChildren();
+    const tabla = document.createElement('table');
+    tabla.innerHTML = '<thead><tr><th>Fecha</th><th>IP</th><th>Evento</th><th>Resultado</th><th>Navegador</th><th>Dispositivo</th><th>Ubicación aproximada</th><th>Acción</th></tr></thead>';
+    const cuerpo = document.createElement('tbody');
+    eventos.forEach((evento) => {
+        const fila = document.createElement('tr');
+        const ubicacion = evento.geo
+            ? [evento.geo.city, evento.geo.region, evento.geo.country].filter(Boolean).join(', ') || '-'
+            : '-';
+        [new Date(evento.timestamp).toLocaleString(), evento.ip, evento.type, evento.outcome, evento.browser, evento.device, ubicacion].forEach((valor) => {
+            const celda = document.createElement('td');
+            celda.textContent = valor || '-';
+            fila.appendChild(celda);
+        });
+        const accion = document.createElement('td');
+        const bloquear = document.createElement('button');
+        bloquear.className = 'block-ip';
+        bloquear.type = 'button';
+        bloquear.textContent = 'Bloquear IP';
+        bloquear.addEventListener('click', () => bloquearIp(evento.ip));
+        accion.appendChild(bloquear);
+        fila.appendChild(accion);
+        cuerpo.appendChild(fila);
+    });
+    tabla.appendChild(cuerpo);
+    adminLogs.appendChild(tabla);
+    adminLogs.style.display = 'block';
+}
+
+async function bloquearIp(ip) {
+    if (!window.confirm(`¿Bloquear la IP ${ip}?`)) return;
+    await fetch(adminApiUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'block', ip })
+    });
+    accederLogs();
 }
 
 comprobarSesion().catch(() => actualizarAcceso(false));

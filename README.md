@@ -174,3 +174,27 @@ AUTH_SECRET=una cadena aleatoria larga y privada
 `AUTH_SECRET` no debe ser igual a `APP_PASSWORD`. Ninguna de las dos debe publicarse en GitHub ni escribirse en `index.html`.
 
 Este acceso es adecuado para una demo privada con una contraseña compartida. No identifica usuarios individualmente ni reemplaza MFA; si el proyecto crece, conviene migrar a Supabase Auth o Auth0.
+
+## 20. Auditoría y defensa
+
+Se agregó una consola administrativa separada para registrar y revisar actividad de seguridad. Usa Netlify Blobs para conservar los eventos entre ejecuciones de las funciones.
+
+Se registran únicamente datos necesarios para defensa:
+
+- IP detectada por Netlify.
+- Fecha y hora.
+- Evento y resultado, por ejemplo `login_failed` o `query`.
+- Navegador y tipo de dispositivo derivados del `User-Agent`.
+- Consulta enmascarada, nunca el documento completo.
+
+También se agregó bloqueo de IP previo al login y a la consulta. El panel permite bloquear una IP desde los logs.
+
+En Netlify se debe crear un tercer secreto:
+
+```text
+ADMIN_PASSWORD=una contraseña administrativa distinta
+```
+
+La función intenta leer la geolocalización aproximada que Netlify adjunta en `x-nf-geo`: ciudad, región, país, código postal, zona horaria y coordenadas aproximadas. Estos datos pueden no estar disponibles en todos los contextos y no representan una dirección exacta.
+
+No se consulta automáticamente un proveedor externo para obtener ISP, organización o ASN. Esos datos no están garantizados por Netlify y agregarlos requeriría enviar la IP a un tercero, con un tratamiento adicional de privacidad. La seguridad no debe depender de la precisión de la geolocalización: la IP, el rate limiting, la autenticación y los bloqueos son los controles principales.

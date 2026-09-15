@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { ipBloqueada, registrarEvento } from "./security.mjs";
 
 const COOKIE_NAME = "radar_session";
 const SESSION_SECONDS = 8 * 60 * 60;
@@ -56,6 +57,12 @@ export function sesionValida(request) {
 }
 
 export default async function handler(request) {
+  const ip = request.headers.get("x-nf-client-connection-ip") || "unknown";
+  if (await ipBloqueada(ip)) {
+    await registrarEvento(request, { type: "blocked_request", outcome: "denied" });
+    return jsonResponse(403, { ok: false, error: "Acceso bloqueado." });
+  }
+
   if (request.method === "GET") {
     return jsonResponse(200, { ok: sesionValida(request) });
   }
@@ -85,10 +92,12 @@ export default async function handler(request) {
 
   const password = typeof body.password === "string" ? body.password : "";
   if (!compararSecretos(passwordCorrecta, password)) {
+    await registrarEvento(request, { type: "login_failed", outcome: "denied" });
     return jsonResponse(401, { ok: false, error: "Contraseña incorrecta." });
   }
 
   const expira = String(Date.now() + SESSION_SECONDS * 1000);
+  await registrarEvento(request, { type: "login", outcome: "success" });
   return jsonResponse(200, { ok: true }, {
     "Set-Cookie": `${COOKIE_NAME}=${cookieSesion(expira, secreto)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_SECONDS}`,
   });
