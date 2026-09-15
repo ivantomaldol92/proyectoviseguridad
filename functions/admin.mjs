@@ -33,6 +33,10 @@ function adminValido(request) {
 }
 
 export default async function handler(request) {
+  if (!process.env.ADMIN_PASSWORD || !process.env.AUTH_SECRET) {
+    return response(500, { ok: false, error: "Falta configurar ADMIN_PASSWORD o AUTH_SECRET en Netlify." });
+  }
+
   if (request.method === "POST") {
     let body;
     try { body = await request.json(); } catch { return response(400, { ok: false, error: "Solicitud inválida." }); }
@@ -58,6 +62,10 @@ export default async function handler(request) {
   }
 
   if (!adminValido(request)) return response(401, { ok: false, error: "Panel administrativo bloqueado." });
-  const events = await listarEventos(100);
-  return response(200, { ok: true, events });
+  try {
+    const events = await listarEventos(100);
+    return response(200, { ok: true, events });
+  } catch {
+    return response(503, { ok: false, error: "No se pudo acceder al almacenamiento de logs. Verificá el deploy y Netlify Blobs." });
+  }
 }

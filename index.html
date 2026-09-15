@@ -139,6 +139,9 @@
         .logout:hover { background: rgba(109, 235, 208, .1); transform: none; }
         .protected-content { display: none; }
         .admin-panel { margin-top: 20px; padding: 24px; border: 1px solid rgba(169, 149, 255, .35); background: rgba(25, 20, 48, .72); }
+        .admin-panel.oculto { display: none; }
+        .admin-launcher { margin-top: 14px; padding: 0; border: 0; background: transparent; color: #55706d; font-size: 11px; font-weight: 400; }
+        .admin-launcher:hover { background: transparent; color: var(--cyan); transform: none; }
         .admin-panel h3 { margin: 0 0 8px; color: var(--violet); font-family: 'Syne', sans-serif; }
         .admin-copy { color: var(--muted); font-size: 13px; line-height: 1.5; }
         .admin-form { display: flex; gap: 10px; margin-top: 16px; }
@@ -206,7 +209,9 @@
         </div>
     </section>
 
-    <section class="admin-panel">
+    <button id="adminLauncher" class="admin-launcher" type="button">·</button>
+
+    <section id="adminPanel" class="admin-panel oculto">
         <h3>Security console</h3>
         <div class="admin-copy">Panel privado de auditoría. Requiere una credencial administrativa distinta a la contraseña de acceso.</div>
         <div class="admin-form">
@@ -303,6 +308,8 @@ const adminPassword = document.getElementById('adminPassword');
 const adminLogin = document.getElementById('adminLogin');
 const adminError = document.getElementById('adminError');
 const adminLogs = document.getElementById('adminLogs');
+const adminLauncher = document.getElementById('adminLauncher');
+const adminPanel = document.getElementById('adminPanel');
 const fichaModal = document.getElementById('fichaModal');
 const fichaDatos = document.getElementById('fichaDatos');
 const imprimirFicha = document.getElementById('imprimirFicha');
@@ -312,6 +319,10 @@ let fichaActual = null;
 loginButton.addEventListener('click', iniciarSesion);
 logoutButton.addEventListener('click', cerrarSesion);
 adminLogin.addEventListener('click', accederLogs);
+adminLauncher.addEventListener('click', () => {
+    adminPanel.classList.toggle('oculto');
+    if (!adminPanel.classList.contains('oculto')) adminPassword.focus();
+});
 imprimirFicha.addEventListener('click', () => window.print());
 cerrarFicha.addEventListener('click', cerrarFichaModal);
 passwordInput.addEventListener('keydown', (evento) => {
