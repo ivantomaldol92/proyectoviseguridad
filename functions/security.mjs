@@ -3,6 +3,9 @@ import { getStore } from "@netlify/blobs";
 const store = getStore({ name: "radar-security", consistency: "strong" });
 const LOG_PREFIX = "event:";
 const BLOCK_PREFIX = "blocked:";
+const LIMIT_PREFIX = "limit:";
+const MAX_QUERIES_PER_DAY = 20;
+const MIN_QUERY_INTERVAL_MS = 10000;
 
 function header(request, name) {
   return request.headers.get(name) || request.headers.get(name.toLowerCase()) || "";
@@ -65,25 +68,78 @@ export function ocultarConsulta(value) {
 }
 
 export async function ipBloqueada(ip) {
-  return Boolean(await store.get(`${BLOCK_PREFIX}${ip}`));
+  try {
+    return Boolean(await store.get(`${BLOCK_PREFIX}${ip}`));
+  } catch {
+    return false;
+  }
+}
+
+function dayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function limiteConsulta(ip) {
+  const key = `${LIMIT_PREFIX}${dayKey()}:${ip}`;
+  let current;
+  try {
+    current = await store.get(key, { type: "json" }) || { count: 0, lastAt: 0, pausedUntil: 0 };
+  } catch {
+    return { allowed: false, reason: "storage_unavailable", retryAt: null };
+  }
+  const now = Date.now();
+
+  if (current.pausedUntil > now) {
+    return { allowed: false, reason: "provider_pause", retryAt: current.pausedUntil };
+  }
+  if (current.lastAt && now - current.lastAt < MIN_QUERY_INTERVAL_MS) {
+    return { allowed: false, reason: "too_fast", retryAt: current.lastAt + MIN_QUERY_INTERVAL_MS };
+  }
+  if (current.count >= MAX_QUERIES_PER_DAY) {
+    return { allowed: false, reason: "daily_limit", retryAt: null };
+  }
+
+  current.count += 1;
+  current.lastAt = now;
+  try {
+    await store.setJSON(key, current);
+  } catch {
+    return { allowed: false, reason: "storage_unavailable", retryAt: null };
+  }
+  return { allowed: true, retryAt: null };
+}
+
+export async function pausarConsultas(ip, durationMs = 12 * 60 * 60 * 1000) {
+  const key = `${LIMIT_PREFIX}${dayKey()}:${ip}`;
+  try {
+    const current = await store.get(key, { type: "json" }) || { count: 0, lastAt: 0 };
+    current.pausedUntil = Date.now() + durationMs;
+    await store.setJSON(key, current);
+  } catch {
+    return false;
+  }
+  return true;
 }
 
 export async function registrarEvento(request, event) {
   const details = clientDetails(request);
   const id = `${Date.now()}-${crypto.randomUUID()}`;
-  await store.setJSON(`${LOG_PREFIX}${id}`, {
-    id,
-    timestamp: new Date().toISOString(),
-    ...details,
-    ...event,
-  });
+  try {
+    await store.setJSON(`${LOG_PREFIX}${id}`, {
+      id,
+      timestamp: new Date().toISOString(),
+      ...details,
+      ...event,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function listarEventos(limit = 100) {
-  const listed = [];
-  for await (const entry of store.list({ prefix: LOG_PREFIX })) {
-    listed.push(entry.key);
-  }
+  const result = await store.list({ prefix: LOG_PREFIX });
+  const listed = (result.blobs || []).map((entry) => entry.key);
 
   const events = [];
   for (const key of listed.slice(-limit).reverse()) {

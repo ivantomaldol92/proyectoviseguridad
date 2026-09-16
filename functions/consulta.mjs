@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { sesionValida } from "./login.mjs";
-import { ipBloqueada, ocultarConsulta, registrarEvento } from "./security.mjs";
+import { ipBloqueada, limiteConsulta, ocultarConsulta, pausarConsultas, registrarEvento } from "./security.mjs";
 
 const BASE_URL = "https://mi.nosis.com";
 
@@ -18,7 +18,8 @@ function getCookieHeader(sessionId, nstk) {
 }
 
 export default async function handler(request) {
-  if (await ipBloqueada(request.headers.get("x-nf-client-connection-ip") || "unknown")) {
+  const ip = request.headers.get("x-nf-client-connection-ip") || "unknown";
+  if (await ipBloqueada(ip)) {
     await registrarEvento(request, { type: "blocked_request", outcome: "denied" });
     return jsonResponse(403, { ok: false, error: "Acceso bloqueado." });
   }
@@ -63,6 +64,22 @@ export default async function handler(request) {
     });
   }
 
+  const limite = await limiteConsulta(ip);
+  if (!limite.allowed) {
+    await registrarEvento(request, { type: "query_limited", outcome: "denied", reason: limite.reason });
+    return jsonResponse(429, {
+      ok: false,
+      error: limite.reason === "provider_pause"
+        ? "Las consultas están pausadas temporalmente porque el proveedor aplicó un límite."
+        : limite.reason === "daily_limit"
+          ? "Se alcanzó el límite diario de consultas."
+          : limite.reason === "storage_unavailable"
+            ? "El control de seguridad no está disponible. Intentá más tarde."
+          : "Esperá unos segundos antes de volver a consultar.",
+      retryAt: limite.retryAt,
+    });
+  }
+
   await registrarEvento(request, {
     type: "query",
     outcome: "started",
@@ -90,6 +107,10 @@ export default async function handler(request) {
     });
 
     if (!response.ok) {
+      if (response.status === 403 || response.status === 429) {
+        await pausarConsultas(ip);
+        await registrarEvento(request, { type: "provider_limited", outcome: "paused", status: response.status });
+      }
       throw new Error(`HTTP ${response.status}`);
     }
 

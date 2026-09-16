@@ -112,9 +112,10 @@
 
         @media print {
             @page { size: A4; margin: 12mm; }
-            body * { visibility: hidden !important; }
-            .ficha-modal, .ficha-modal * { visibility: visible !important; }
-            .ficha-modal { position: absolute; inset: 0; display: block; padding: 0; background: white; }
+            html, body { width: 210mm; height: 297mm; margin: 0; overflow: hidden !important; background: white; }
+            body > .container { width: 210mm; height: 297mm; margin: 0; padding: 0; }
+            body > .container > *:not(#fichaModal) { display: none !important; }
+            .ficha-modal { position: static; display: block !important; width: 210mm; height: 273mm; padding: 0; overflow: hidden; background: white; }
             .ficha { width: 100%; min-height: 0; padding: 0; border: 0; font-size: 12pt; }
             .ficha h2 { margin-bottom: 14px; font-size: 18pt; }
             .ficha p { margin: 6px 0; line-height: 1.25; }
